@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block content %}
+<form action='/search' method='get'>
+    <input type=text name=query value='{{query}}' />
+    <input type=submit value='search' />
+</form>
+<div>
+    {{results|safe}}
+</div>
+{% endblock %}
+

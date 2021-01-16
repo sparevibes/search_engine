@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>host: *.{{host}}</h1>
+
+{% for k, v in html_tables.items() %}
+    <hr/>
+    {{v|safe}}
+    <hr/>
+{% endfor %}
+
+{% endblock %}

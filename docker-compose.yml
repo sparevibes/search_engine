@@ -1,0 +1,43 @@
+version: '3.7'
+
+services:
+  web:
+    build: ./services/web
+    command: python manage.py run -h 0.0.0.0
+    volumes:
+      - ./services/web/:/usr/src/app/
+    ports:
+      - 3400:5000
+    env_file:
+      - ./.env.prod
+      - ./.env.prod.db
+    environment:
+      - FLASK_DEBUG=1
+    depends_on:
+      - db
+  pg:
+    build: ./services/pg
+    command: postgres -c config_file=/etc/postgresql.conf
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    env_file:
+      - ./.env.prod.db
+  db:
+    image: edoburu/pgbouncer
+    environment:
+      - MAX_CLIENT_CONN=4000
+      - DEFAULT_POOL_SIZE=30
+      - MIN_POOL_SIZE=1
+      - POOL_MODE=transaction
+      - DB_HOST=pg
+    env_file:
+      - ./.env.prod.pgbouncer
+    depends_on:
+      - pg
+
+volumes:
+  postgres_data:
+
+networks:
+  default:
+    name: novichenko

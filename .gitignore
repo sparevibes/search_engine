@@ -1,0 +1,11 @@
+*.swo
+*.swp
+*.swn
+*.swm
+*.csv#
+
+
+*.pyc
+__pycache__
+
+.env.prod*

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+{{jsonb_html|safe}}
+
+<hr>
+<h1>{{title|safe}}</h1>
+<article>
+{{content|safe}}
+</article>
+{% endblock %}
+
+
