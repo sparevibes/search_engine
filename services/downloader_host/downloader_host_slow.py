@@ -81,8 +81,6 @@ def process_warc_record(connection, record, id_source):
     # extract the meta
     try:
         meta = metahtml.parse(html, url)
-        pspacy_title = pspacy.lemmatize(meta['language']['best']['value'], meta['title']['best']['value'])
-        pspacy_content = pspacy.lemmatize(meta['language']['best']['value'], meta['title']['best']['value'])
 
     # if there was an error in metahtml, log it
     except Exception as e:
@@ -95,20 +93,43 @@ def process_warc_record(connection, record, id_source):
                 'traceback' : traceback.format_exc()
                 }
             }
-        pspacy_title = None
-        pspact_content = None
 
+    # insert into database
+    try:
+        meta_json = json.dumps(meta, default=str)
+        sql = sqlalchemy.sql.text('''
+            INSERT INTO metahtml (accessed_at, id_source, url, jsonb) VALUES 
+                (:accessed_at, :id_source, :url, :jsonb);
+            ''')
+        res = connection.execute(sql,{
+            'accessed_at' : accessed_at,
+            'id_source' : id_source,
+            'url' : url,
+            'jsonb' : meta_json
+            })
 
-    meta_json = json.dumps(meta, default=str)
-    batch = [{
-        'accessed_at' : accessed_at,
-        'id_source' : id_source,
-        'url' : url,
-        'jsonb' : meta_json,
-        'pspacy_title' : pspacy_title,
-        'pspacy_content' : pspacy_content
-        }]
-    bulk_insert(batch)
+    # if there was an error while inserting, log it
+    except Exception as e:
+        log.warning('url='+url+' exception='+str(e))
+        meta = { 
+            'exception' : {
+                'str(e)' : str(e),
+                'type' : type(e).__name__,
+                'location' : 'metahtml',
+                'traceback' : traceback.format_exc()
+                }
+            }
+        meta_json = json.dumps(meta, default=str)
+        sql = sqlalchemy.sql.text('''
+            INSERT INTO metahtml (accessed_at, id_source, url, jsonb) VALUES 
+                (:accessed_at, :id_source, :url, :jsonb);
+            ''')
+        res = connection.execute(sql,{
+            'accessed_at' : accessed_at,
+            'id_source' : id_source,
+            'url' : url,
+            'jsonb' : meta_json
+            })
 
 
 def bulk_insert(batch):
@@ -138,6 +159,7 @@ if __name__=='__main__':
     # set logging
     logging.getLogger().setLevel(os.environ.get('LOGLEVEL','INFO'))
 
+    print('before')
     # create database connection
     engine = sqlalchemy.create_engine(args.db, connect_args={
         'application_name': sys.argv[0].split('/')[-1],
@@ -150,4 +172,5 @@ if __name__=='__main__':
         sys.exit(1)
 
     # process the query
+    print('test')
     process_cdx_url(connection, args.url_pattern)

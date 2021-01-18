@@ -1,8 +1,13 @@
 {% extends "base.html" %}
 
 {% block content %}
-<form action='/search' method='get'>
-    <input type=text name=query />
-    <input type=submit value='search' />
+<style>
+body {
+    background-color: #eef;
+}
+</style>
+<form class=centered action='/search' method='get'>
+    <input type=text placeholder='search...' name=query />
+    <button type="submit"><i class="fa fa-search"></i></button>
 </form>
 {% endblock %}

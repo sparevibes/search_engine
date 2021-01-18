@@ -1,0 +1,92 @@
+body {
+  padding: 0px;
+  margin: 0px;
+  position: relative;
+  min-height: 100vh;
+  /*background-color: #eef;*/
+}
+
+header {
+  background-color: #eef;
+}
+
+main {
+  padding-top: 0.5rem;
+  padding-bottom: 2.5rem;    /* Footer height */
+}
+
+.box {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  max-width: 800px;
+  margin: auto;
+}
+
+footer {
+    /*position: fixed;*/
+    /*top: 100%;*/
+    /*left: 0;*/
+  background-color: #ccc;
+  /*width: 100%;*/
+  /*transform: translate(0,-100%);*/
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.2rem 0.2rem;
+  height: 1.5rem;            /* Footer height */
+}
+
+/* Style the search box inside the navigation bar */
+form {
+    font-size: 1.5rem;
+    padding: 0px;
+    margin: 0px;
+}
+
+input[name=query] {
+    /*float: left;*/
+    padding: 6px 10px;
+    margin: 0px;
+    /*width: *;*/
+    border: none;
+    font-size: inherit;
+}
+
+button {
+    /*float: right;*/
+    padding: 6px 10px;
+    border: none;
+    margin: 0px;
+    background: #ddd;
+    cursor: pointer;
+    font-size: inherit;
+}
+
+button:hover {
+    background: #4c4;
+}
+
+/* main page search bar */
+
+.centered {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 2.5rem;
+}
+
+/* search results */
+
+.result {
+  margin: 1em 0em;
+}
+.result:hover {
+    /*background-color: #eef;*/
+}
+
+.result_title {
+  white-space: nowrap;
+  overflow: hidden;
+}

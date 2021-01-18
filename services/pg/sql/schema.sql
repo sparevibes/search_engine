@@ -576,6 +576,20 @@ SELECT create_rollup(
     $$
 );
 
+SELECT create_rollup(
+    'metahtml',
+    'metahtml_rollup_textpub',
+    wheres => $$
+        unnest(tsvector_to_array(title || content)) AS alltext,
+        date_trunc('day',(jsonb->'timestamp.published'->'best'->'value'->>'lo')::timestamptz) AS timestamp_published
+    $$,
+    distincts => $$
+        url,
+        url_hostpathquery_key(url) AS hostpathquery,
+        url_hostpath_key(url) AS hostpath
+    $$
+);
+
 /*
 SELECT create_rollup(
     'metahtml',
@@ -659,7 +673,6 @@ SELECT create_rollup(
     $$
 );
 
-/*
 SELECT create_rollup(
     'metahtml',
     'metahtml_rollup_host',
@@ -673,7 +686,6 @@ SELECT create_rollup(
         url_hostpath_key(url) AS hostpath
     $$
 );
-*/
 
 SELECT create_rollup(
     'metahtml',
