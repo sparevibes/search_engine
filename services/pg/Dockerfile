@@ -62,5 +62,7 @@ RUN cd /tmp \
 
 #RUN echo "ulimit -n unlimited" > /etc/default/postgres
 
+RUN mkdir /fastdata \
+ && chown postgres /fastdata
 COPY ./postgresql.conf /etc/postgresql.conf
 COPY ./sql/*.sql /docker-entrypoint-initdb.d/

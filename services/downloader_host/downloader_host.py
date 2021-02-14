@@ -13,11 +13,13 @@ import re
 import sqlalchemy
 import traceback
 
+import pspacy
+
 # initialize logging
 import logging
 log = logging.getLogger(__name__)
 
-def process_cdx_url(connection, url, source='cc', **kwargs):
+def process_cdx_url(connection, url, batch_size=100, source='cc', **kwargs):
     '''
     FIXME:
     ideally, this function would be wrapped in a transaction;
@@ -57,72 +59,87 @@ def process_cdx_url(connection, url, source='cc', **kwargs):
     log.info("estimated_urls="+str(estimated_urls))
 
     # loop through each matching url
+    batch = []
     for i,result in enumerate(cdx.iter(url,**kwargs)):
 
         # process only urls with 200 status code (i.e. successful)
         if result['status']=='200':
             log.info('fetching result; progress='+str(i)+'/'+str(estimated_urls)+'={:10.4f}'.format(i/estimated_urls)+' url='+result['url'])
             record = result.fetch_warc_record()
-            process_warc_record(connection, record, id_source)
+
+            # extract the information from the warc record
+            url = record.rec_headers.get_header('WARC-Target-URI')
+            accessed_at = record.rec_headers.get_header('WARC-Date')
+            html = record.content_stream().read()
+            log.debug("url="+url)
+
+            # extract the meta
+            try:
+                meta = metahtml.parse(html, url)
+
+                try:
+                    pspacy_title = pspacy.lemmatize(meta['language']['best']['value'], meta['title']['best']['value'])
+                    pspacy_content = pspacy.lemmatize(meta['language']['best']['value'], meta['title']['best']['value'])
+                except TypeError:
+                    pspacy_title = None
+                    pspacy_content = None
+
+            # if there was an error in metahtml, log it
+            except Exception as e:
+                log.warning('url='+url+'type='+type(e).__name__+' exception='+str(e))
+                meta = { 
+                    'exception' : {
+                        'str(e)' : str(e),
+                        'type' : type(e).__name__,
+                        'location' : 'metahtml',
+                        'traceback' : traceback.format_exc()
+                        }
+                    }
+                pspacy_title = None
+                pspacy_content = None
+
+            # append to the batch
+            meta_json = json.dumps(meta, default=str)
+            batch.append({
+                'accessed_at' : accessed_at,
+                'id_source' : id_source,
+                'url' : url,
+                'jsonb' : meta_json,
+                'pspacy_title' : pspacy_title,
+                'pspacy_content' : pspacy_content
+                })
+
+        if len(batch)>=batch_size:
+            bulk_insert(connection,batch)
+            batch = []
+
+    # finished loading urls,
+    # so insert the last batch and update the source table
+    if len(batch)>0:
+        bulk_insert(connection,batch)
+        batch = []
+    sql = sqlalchemy.sql.text('''
+    UPDATE source SET finished_at=now() where id=:id;
+    ''')
+    res = connection.execute(sql,{'id':id_source})
 
 
-def process_warc_record(connection, record, id_source):
-    '''
-    compute the meta for the warc record and insert it into the database;
-    this function is not intended to be called directly by the user,
-    but is instead a helper function used by @process_cdx_url 
-    '''
-    # extract the information from the warc record
-    url = record.rec_headers.get_header('WARC-Target-URI')
-    accessed_at = record.rec_headers.get_header('WARC-Date')
-    html = record.content_stream().read()
-    log.debug("url="+url)
-
-    # extract the meta
+def bulk_insert(connection,batch):
     try:
-        meta = metahtml.parse(html, url)
-        pspacy_title = pspacy.lemmatize(meta['language']['best']['value'], meta['title']['best']['value'])
-        pspacy_content = pspacy.lemmatize(meta['language']['best']['value'], meta['title']['best']['value'])
-
-    # if there was an error in metahtml, log it
+        logging.info('bulk_insert '+str(len(batch))+' rows')
+        keys = ['accessed_at', 'id_source', 'url', 'jsonb']
+        sql = sqlalchemy.sql.text(
+            'INSERT INTO metahtml ('+','.join(keys)+',title,content) VALUES'+
+            ','.join(['(' + ','.join([f':{key}{i}' for key in keys]) + f",to_tsvector('simple',:pspacy_title{i}),to_tsvector('simple',:pspacy_content{i})" + ')' for i in range(len(batch))])
+            )
+        res = connection.execute(sql,{
+            key+str(i) : d[key]
+            for key in keys + ['pspacy_title','pspacy_content']
+            for i,d in enumerate(batch)
+            })
     except Exception as e:
-        log.warning('url='+url+' exception='+str(e))
-        meta = { 
-            'exception' : {
-                'str(e)' : str(e),
-                'type' : type(e).__name__,
-                'location' : 'metahtml',
-                'traceback' : traceback.format_exc()
-                }
-            }
-        pspacy_title = None
-        pspact_content = None
-
-
-    meta_json = json.dumps(meta, default=str)
-    batch = [{
-        'accessed_at' : accessed_at,
-        'id_source' : id_source,
-        'url' : url,
-        'jsonb' : meta_json,
-        'pspacy_title' : pspacy_title,
-        'pspacy_content' : pspacy_content
-        }]
-    bulk_insert(batch)
-
-
-def bulk_insert(batch):
-    logging.info('bulk_insert '+str(len(batch))+' rows')
-    keys = ['accessed_at', 'id_source', 'url', 'jsonb']
-    sql = sqlalchemy.sql.text(
-        'INSERT INTO metahtml ('+','.join(keys)+',title,content) VALUES'+
-        ','.join(['(' + ','.join([f':{key}{i}' for key in keys]) + f",to_tsvector('simple',:pspacy_title{i}),to_tsvector('simple',:pspacy_content{i})" + ')' for i in range(len(batch))])
-        )
-    res = connection.execute(sql,{
-        key+str(i) : d[key]
-        for key in keys + ['pspacy_title','pspacy_content']
-        for i,d in enumerate(batch)
-        })
+        logging.error('failed to insert:'+str(e))
+        pass
 
 
 if __name__=='__main__':
@@ -141,6 +158,7 @@ if __name__=='__main__':
     # create database connection
     engine = sqlalchemy.create_engine(args.db, connect_args={
         'application_name': sys.argv[0].split('/')[-1],
+        'connect_timeout': 60*60,
         })  
     connection = engine.connect()
 

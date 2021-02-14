@@ -49,6 +49,7 @@ input[name=query] {
     padding: 6px 10px;
     margin: 0px;
     /*width: *;*/
+    width: 750px;
     border: none;
     font-size: inherit;
 }

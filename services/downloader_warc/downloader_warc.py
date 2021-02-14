@@ -21,7 +21,19 @@ import pspacy
 def process_all_warcs_from_url(connection, cc_url):
     with tempfile.TemporaryDirectory() as tempdir:
         logging.info('downloading url '+cc_url+' to '+tempdir)
-        cc_path = wget.download(cc_url, out=tempdir)
+
+        # attempt to download the file with an exponential backoff
+        delay = 60
+        while True:
+            try:
+                cc_path = wget.download(cc_url, out=tempdir)
+                break
+            except ConnectionResetError:
+                logging.info('ConnectionResetError')
+                sleep(delay)
+                delay*=2
+
+        # process the downloaded archive
         with gzip.open(cc_path, 'rt') as f:
             for line in f:
                 prefix = 'https://commoncrawl.s3.amazonaws.com/'
@@ -90,8 +102,12 @@ def process_warc_from_disk(connection, warc_path, id_source, batch_size=1000):
                 # extract the meta
                 try:
                     meta = metahtml.parse(html, url)
-                    pspacy_title = pspacy.lemmatize(meta['language']['best']['value'], meta['title']['best']['value'])
-                    pspacy_content = pspacy.lemmatize(meta['language']['best']['value'], meta['title']['best']['value'])
+                    try:
+                        pspacy_title = pspacy.lemmatize(meta['language']['best']['value'], meta['title']['best']['value'])
+                        pspacy_content = pspacy.lemmatize(meta['language']['best']['value'], meta['title']['best']['value'])
+                    except TypeError:
+                        pspacy_title = None
+                        pspacy_content = None
 
                 # if there was an error in metahtml, log it
                 except Exception as e:
@@ -130,17 +146,21 @@ def process_warc_from_disk(connection, warc_path, id_source, batch_size=1000):
 
 
 def bulk_insert(batch):
-    logging.info('bulk_insert '+str(len(batch))+' rows')
-    keys = ['accessed_at', 'id_source', 'url', 'jsonb']
-    sql = sqlalchemy.sql.text(
-        'INSERT INTO metahtml ('+','.join(keys)+',title,content) VALUES'+
-        ','.join(['(' + ','.join([f':{key}{i}' for key in keys]) + f",to_tsvector('simple',:pspacy_title{i}),to_tsvector('simple',:pspacy_content{i})" + ')' for i in range(len(batch))])
-        )
-    res = connection.execute(sql,{
-        key+str(i) : d[key]
-        for key in keys + ['pspacy_title','pspacy_content']
-        for i,d in enumerate(batch)
-        })
+    try:
+        logging.info('bulk_insert '+str(len(batch))+' rows')
+        keys = ['accessed_at', 'id_source', 'url', 'jsonb']
+        sql = sqlalchemy.sql.text(
+            'INSERT INTO metahtml ('+','.join(keys)+',title,content) VALUES'+
+            ','.join(['(' + ','.join([f':{key}{i}' for key in keys]) + f",to_tsvector('simple',:pspacy_title{i}),to_tsvector('simple',:pspacy_content{i})" + ')' for i in range(len(batch))])
+            )
+        res = connection.execute(sql,{
+            key+str(i) : d[key]
+            for key in keys + ['pspacy_title','pspacy_content']
+            for i,d in enumerate(batch)
+            })
+    except Exception as e:
+        logging.error('failed to insert:'+str(e))
+        pass
 
 
 if __name__ == '__main__':
@@ -160,6 +180,7 @@ if __name__ == '__main__':
     # create database connection
     engine = sqlalchemy.create_engine(args.db, connect_args={
         'application_name': 'metahtml',
+        'connect_timeout': 60*60
         })  
     connection = engine.connect()
 

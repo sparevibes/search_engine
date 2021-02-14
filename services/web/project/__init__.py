@@ -183,8 +183,9 @@ def search():
 def ngrams():
 
     query = request.args.get('query')
+    ts_query = pspacy.lemmatize_query('en', query)
 
-    terms = query.split()
+    terms = [ term for term in ts_query.split() if term != '&' ]
 
     sql=text(f'''
     select  
@@ -192,56 +193,96 @@ def ngrams():
         '''+
         ''',
         '''.join([f'''
-        coalesce(y{i},0)/total.total as y{i}
+        coalesce(y{i}/total.total,0) as y{i}
         ''' for i,term in enumerate(terms) ])
         +'''
     from (
-        select generate_series('2000-01-01', '2020-01-01', '1 year'::interval) as time
+        select generate_series('2000-01-01', '2020-12-31', '1 month'::interval) as time
     ) as x
     left outer join (
         select
+            distinct_hostpath as total,
+            where_timestamp_published as time
+        from metahtml_rollup_langmonth
+        where 
+                where_language = 'en'
+            and where_timestamp_published >= '2000-01-01 00:00:00' 
+            and where_timestamp_published <= '2020-12-31 23:59:59'
+        /*
+        select
             sum(distinct_hostpath) as total,
-            date_trunc('year',where_timestamp_published) as time
+            date_trunc('month',where_timestamp_published) as time
         from metahtml_rollup_hostpub
         where 
                 where_timestamp_published >= '2000-01-01 00:00:00' 
             and where_timestamp_published <= '2020-12-31 23:59:59'
         group by time
+        */
     ) total on total.time=x.time
     '''
     +'''
     '''.join([f'''
     left outer join (
         select
+            distinct_hostpath as y{i},
+            where_timestamp_published as time
+        from metahtml_rollup_textlangmonth
+        where 
+            where_alltext = :term{i}
+            and where_language = 'en'
+            and where_timestamp_published >= '2000-01-01 00:00:00' 
+            and where_timestamp_published <= '2020-12-31 23:59:59'
+        /*
+        select
             sum(distinct_hostpath) as y{i},
-            date_trunc('year',where_timestamp_published) as time
+            date_trunc('month',where_timestamp_published) as time
         from metahtml_rollup_texthostpub
         where 
             where_alltext = :term{i}
             and where_timestamp_published >= '2000-01-01 00:00:00' 
             and where_timestamp_published <= '2020-12-31 23:59:59'
         group by time
+        */
     ) y{i} on x.time=y{i}.time
     ''' for i,term in enumerate(terms) ])
     +
     '''
     order by x asc;
     ''')
-    #return f'<pre>{sql}</pre>'
     res = list(g.connection.execute(sql,{
         f'term{i}':term
         for i,term in enumerate(terms)
         }))
-
     x = [ row.x for row in res ]
-    #ys = [ [ row[i+1] for i,term in enumerate(terms) ] for row in res ]
     ys = [ [ row[i+1] for row in res ] for i,term in enumerate(terms) ] 
-
     colors = ['red','green','blue','black','purple','orange','pink','aqua']
 
+
+    sql=text(f'''
+    SELECT 
+        id,
+        jsonb->'title'->'best'->>'value' AS title,
+        jsonb->'description'->'best'->>'value' AS description
+    FROM metahtml
+    WHERE
+        to_tsquery('simple', :ts_query) @@ content AND
+        jsonb->'type'->'best'->>'value' = 'article'
+        /*
+        to_tsquery('simple', :ts_query) @@ spacy_tsvector(
+            jsonb->'language'->'best'->>'value',
+            jsonb->'title'->'best'->>'value'
+            )
+        */
+    OFFSET 0
+    LIMIT 10
+    ''')
+    res=g.connection.execute(sql,{
+        'ts_query':ts_query
+        })
     return render_template(
-        'ngrams.html',
-        query = query,
+        'fullsearch.html',
+        query=query,
+        results=res,
         x = x,
         ys = ys,
         terms = zip(terms,colors) ,

@@ -1,3 +1,5 @@
+CREATE TABLESPACE fastdata LOCATION '/fastdata';
+
 BEGIN;
 
 \set ON_ERROR_STOP on
@@ -6,6 +8,7 @@ CREATE EXTENSION IF NOT EXISTS rum;
 CREATE EXTENSION IF NOT EXISTS hll;
 CREATE EXTENSION IF NOT EXISTS pspacy;
 CREATE EXTENSION IF NOT EXISTS pg_rollup;
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
 
 /*******************************************************************************
  * generic helper functions
@@ -450,6 +453,7 @@ CREATE TABLE metahtml (
 
 -- rollups for tracking debug info for the metahtml library
 
+/*
 SELECT create_rollup (
     'metahtml',
     'metahtml_versions',
@@ -466,7 +470,6 @@ SELECT create_rollup (
 
 -- FIXME:
 -- the "type" column is not detailed enough, but str(e) is too detailed.
-/*
 SELECT create_rollup (
     'metahtml',
     'metahtml_exceptions',
@@ -480,7 +483,6 @@ SELECT create_rollup (
         url_hostpath_key(url) AS hostpath
     $$
 );
-*/
 
 SELECT create_rollup (
     'metahtml',
@@ -496,6 +498,7 @@ SELECT create_rollup (
         url_hostpath_key(url) AS hostpath
     $$
 );
+*/
 
 -- rollup tables for measuring links/pagerank
 
@@ -509,6 +512,7 @@ SELECT create_rollup (
 --url_hostpathquery_key(jsonb_array_elements(jsonb->'links.all'->'best'->'value')->>'href') AS dest_hostpathquery,
 --url_hostpath_key(jsonb_array_elements(jsonb->'links.all'->'best'->'value')->>'href') AS dest_hostpath
 
+/*
 SELECT create_rollup(
     'metahtml',
     'metahtml_linksall_host',
@@ -522,6 +526,7 @@ SELECT create_rollup(
         url_hostpath_key(url) AS src_hostpath
     $$
 );
+*/
 
 /*
 SELECT create_rollup(
@@ -537,9 +542,13 @@ SELECT create_rollup(
         url_hostpath_key(url) AS src_hostpath
     $$
 );
+*/
 
+/*
 -- FIXME:
 -- we shsould add filtering onto this so that we only record exact pagerank details for a small subset of links
+-- FIXME:
+-- does this create too many locks?
 SELECT create_rollup(
     'metahtml',
     'metahtml_linksall_hostpath',
@@ -548,7 +557,9 @@ SELECT create_rollup(
         url_hostpath_key(jsonb_array_elements(jsonb->'links.all'->'best'->'value')->>'href') AS dest,
     $$
 );
+*/
 
+/*
 SELECT create_rollup(
     'metahtml',
     'metahtml_linkscontent_hostpath',
@@ -561,46 +572,15 @@ SELECT create_rollup(
 
 -- rollups for text
 
-SELECT create_rollup(
-    'metahtml',
-    'metahtml_rollup_texthostpub',
-    wheres => $$
-        unnest(tsvector_to_array(title || content)) AS alltext,
-        url_host(url) AS host,
-        date_trunc('day',(jsonb->'timestamp.published'->'best'->'value'->>'lo')::timestamptz) AS timestamp_published
-    $$,
-    distincts => $$
-        url,
-        url_hostpathquery_key(url) AS hostpathquery,
-        url_hostpath_key(url) AS hostpath
-    $$
-);
-
-SELECT create_rollup(
-    'metahtml',
-    'metahtml_rollup_textpub',
-    wheres => $$
-        unnest(tsvector_to_array(title || content)) AS alltext,
-        date_trunc('day',(jsonb->'timestamp.published'->'best'->'value'->>'lo')::timestamptz) AS timestamp_published
-    $$,
-    distincts => $$
-        url,
-        url_hostpathquery_key(url) AS hostpathquery,
-        url_hostpath_key(url) AS hostpath
-    $$
-);
-
 /*
 SELECT create_rollup(
     'metahtml',
-    'metahtml_rollup_titlehostpub',
+    'metahtml_rollup_texthostmonth',
+    tablespace => 'fastdata',
     wheres => $$
-        btree_sanitize(unnest(tsvector_to_array(spacy_tsvector(
-            jsonb->'language'->'best'->>'value',
-            jsonb->'title'->'best'->>'value'
-            )))) AS title,
+        unnest(tsvector_to_array(title || content)) AS alltext,
         url_host(url) AS host,
-        date_trunc('day',(jsonb->'timestamp.published'->'best'->'value'->>'lo')::timestamptz) AS timestamp_published
+        date_trunc('month',(jsonb->'timestamp.published'->'best'->'value'->>'lo')::timestamptz) AS timestamp_published
     $$,
     distincts => $$
         url,
@@ -611,14 +591,11 @@ SELECT create_rollup(
 
 SELECT create_rollup(
     'metahtml',
-    'metahtml_rollup_contenthostpub',
+    'metahtml_rollup_textmonth',
+    tablespace => 'fastdata',
     wheres => $$
-        btree_sanitize(unnest(tsvector_to_array(spacy_tsvector(
-            jsonb->'language'->'best'->>'value',
-            jsonb->'content'->'best'->>'value'
-            )))) AS content,
-        url_host(url) AS host,
-        date_trunc('day',(jsonb->'timestamp.published'->'best'->'value'->>'lo')::timestamptz) AS timestamp_published
+        unnest(tsvector_to_array(title || content)) AS alltext,
+        date_trunc('month',(jsonb->'timestamp.published'->'best'->'value'->>'lo')::timestamptz) AS timestamp_published
     $$,
     distincts => $$
         url,
@@ -628,7 +605,67 @@ SELECT create_rollup(
 );
 */
 
+SELECT create_rollup(
+    'metahtml',
+    'metahtml_rollup_textlangmonth',
+    tablespace => 'fastdata',
+    wheres => $$
+        unnest(tsvector_to_array(title || content)) AS alltext,
+        jsonb->'language'->'best'->>'value' AS language, 
+        date_trunc('month',(jsonb->'timestamp.published'->'best'->'value'->>'lo')::timestamptz) AS timestamp_published
+    $$,
+    distincts => $$
+        url,
+        url_hostpathquery_key(url) AS hostpathquery,
+        url_hostpath_key(url) AS hostpath
+    $$
+);
+
+SELECT create_rollup(
+    'metahtml',
+    'metahtml_rollup_langmonth',
+    tablespace => 'fastdata',
+    wheres => $$
+        jsonb->'language'->'best'->>'value' AS language, 
+        date_trunc('month',(jsonb->'timestamp.published'->'best'->'value'->>'lo')::timestamptz) AS timestamp_published
+    $$,
+    distincts => $$
+        url,
+        url_hostpathquery_key(url) AS hostpathquery,
+        url_hostpath_key(url) AS hostpath
+    $$
+);
+
 -- other rollups
+
+/*
+SELECT create_rollup(
+    'metahtml',
+    'metahtml_rollup_langhost',
+    wheres => $$
+        url_host(url) AS host,
+        jsonb->'language'->'best'->>'value' AS language
+    $$,
+    distincts => $$
+        url,
+        url_hostpathquery_key(url) AS hostpathquery,
+        url_hostpath_key(url) AS hostpath
+    $$
+);
+
+SELECT create_rollup(
+    'metahtml',
+    'metahtml_rollup_lang',
+    wheres => $$
+        jsonb->'language'->'best'->>'value' AS language
+    $$,
+    distincts => $$
+        url,
+        url_hostpathquery_key(url) AS hostpathquery,
+        url_hostpath_key(url) AS hostpath
+    $$
+);
+*/
 
 /*
 SELECT create_rollup(
@@ -659,6 +696,7 @@ SELECT create_rollup(
 );
 */
 
+/*
 SELECT create_rollup(
     'metahtml',
     'metahtml_rollup_hosttype',
@@ -686,7 +724,9 @@ SELECT create_rollup(
         url_hostpath_key(url) AS hostpath
     $$
 );
+*/
 
+/*
 SELECT create_rollup(
     'metahtml',
     'metahtml_rollup_hostaccess',
@@ -700,6 +740,7 @@ SELECT create_rollup(
         url_hostpath_key(url) AS hostpath
     $$
 );
+*/
 
 SELECT create_rollup(
     'metahtml',
@@ -716,6 +757,7 @@ SELECT create_rollup(
     $$
 );
 
+/*
 SELECT create_rollup(
     'metahtml',
     'metahtml_rollup_hostinsert',
@@ -731,7 +773,6 @@ SELECT create_rollup(
     $$
 );
 
-/*
 SELECT create_rollup(
     'metahtml',
     'metahtml_rollup_access',
@@ -746,12 +787,13 @@ SELECT create_rollup(
 );
 */
 
+/*
 SELECT create_rollup(
     'metahtml',
-    'metahtml_rollup_hostpub',
+    'metahtml_rollup_hostmonth',
     wheres => $$
         url_host(url) AS host,
-        date_trunc('day',(jsonb->'timestamp.published'->'best'->'value'->>'lo')::timestamptz) AS timestamp_published
+        date_trunc('month',(jsonb->'timestamp.published'->'best'->'value'->>'lo')::timestamptz) AS timestamp_published
     $$,
     distincts => $$
         url,
@@ -759,6 +801,21 @@ SELECT create_rollup(
         url_hostpath_key(url) AS hostpath
     $$
 );
+
+SELECT create_rollup(
+    'metahtml',
+    'metahtml_rollup_month',
+    tablespace => 'fastdata',
+    wheres => $$
+        date_trunc('month',(jsonb->'timestamp.published'->'best'->'value'->>'lo')::timestamptz) AS timestamp_published
+    $$,
+    distincts => $$
+        url,
+        url_hostpathquery_key(url) AS hostpathquery,
+        url_hostpath_key(url) AS hostpath
+    $$
+);
+*/
 
 /*
 SELECT create_rollup(
@@ -773,7 +830,6 @@ SELECT create_rollup(
         url_hostpath_key(url) AS hostpath
     $$
 );
-*/
 
 SELECT create_rollup(
     'metahtml',
@@ -788,6 +844,7 @@ SELECT create_rollup(
         url_hostpath_key(url) AS hostpath
     $$
 );
+*/
 
 /* indexes for text search of the form
 
@@ -802,8 +859,8 @@ WHERE
     spacy_tsquery('en', 'covid');
 */
 
-CREATE INDEX metahtml_title_rumidx ON metahtml USING rum (title);
-CREATE INDEX metahtml_content_rumidx ON metahtml USING rum (content);
+CREATE INDEX metahtml_title_rumidx ON metahtml USING rum (title) TABLESPACE fastdata;
+CREATE INDEX metahtml_content_rumidx ON metahtml USING rum (content) TABLESPACE fastdata;
 /*
 CREATE INDEX metahtml_title_rumidx ON metahtml USING rum (
     spacy_tsvector(

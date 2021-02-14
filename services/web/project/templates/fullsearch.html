@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block header %}
+<form action='/ngrams' method='get'>
+    <input type=text name=query value='{{query}}' />
+    <button type="submit"><i class="fa fa-search"></i></button>
+</form>
+{% endblock %}
+
+{% block content %}
+<script>
+width = 800; //document.querySelector("main").offsetWidth;
+height = 400; //width/3;
+let data = [
+    [{%for val in x%} {{val}}, {%endfor%}],
+    {% for y in ys %} [{% for val in y%}{{val}},{% endfor %}],{% endfor %}
+];
+let opts = {
+  id: "chart1",
+  class: "my-chart",
+  width: width,
+  height: height,
+  series: [
+    {},
+      {% for term,color in terms %}
+    {
+      // initial toggled state (optional)
+      show: true,
+
+      spanGaps: false,
+
+      // in-legend display
+      label: "{{term}}",
+
+      // series style
+            stroke: "{{color}}",
+      width: 1,
+      drawStyle: 0,
+      lineInterpolation: 1,
+    },
+      {% endfor %}
+  ],
+};
+
+let uplot = new uPlot(opts, data, document.querySelector("main div.box"));
+</script>
+
+<h2>Search Results</h2>
+<div>
+    {%for result in results%}
+    <div class=result>
+        <div class=result_title><a href="/metahtml?id={{result.id}}">{{result.title}}</a></div>
+        <div class=result_description>{{result.description}}</div>
+    </div>
+    {%endfor%}
+</div>
+{% endblock %}
