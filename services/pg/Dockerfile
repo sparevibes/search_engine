@@ -1,10 +1,10 @@
 FROM postgres:12
 
-# install system packages
+# install system packages for building postgres extensions
 RUN apt-get update && apt-get install -y \
     autoconf \
     gcc \
-    git \
+    less \
     make \
     postgresql-server-dev-12 \
     postgresql-plpython3-12 \
@@ -12,6 +12,25 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     sudo \
     wget
+
+# install a newer version of git
+# these libraries are required just for installing a new version of git
+RUN apt-get install -y \
+    libcurl4-gnutls-dev \
+    libexpat1-dev gettext \
+    libz-dev \
+    libssl-dev \
+    asciidoc \
+    xmlto \
+    docbook2x
+RUN cd /tmp \
+ && wget https://www.kernel.org/pub/software/scm/git/git-2.30.1.tar.gz \
+ && tar -xzf git-2.30.1.tar.gz \
+ && cd git-2.30.1 \
+ && ./configure \
+ && make \
+ && make install \
+ && rm -rf /tmp/git-2.30.1
 
 # install postgres extensions from source
 RUN cd /tmp \
@@ -53,16 +72,24 @@ RUN cd /tmp \
  && make USE_PGXS=1 install \
  && rm -rf /tmp/pg_rollup
 
-# install metahtml
+# install metahtml; this requires the new version of git
 ADD https://api.github.com/repos/mikeizbicki/metahtml/git/refs/heads/master /tmp/metahtml.version
 RUN cd /tmp \
- && git clone https://github.com/mikeizbicki/metahtml \
+ && git clone --filter=blob:none --no-checkout https://github.com/mikeizbicki/metahtml \
  && cd metahtml \
- && pip3 install -r requirements.txt
+ && git sparse-checkout init \
+ && git sparse-checkout set '!/tests/.cache' '/*' \
+ && git checkout master \
+ && pip3 install -r requirements.txt \
+ && python3 scripts/generate_tests_json.py > /tmp/metahtml/all_tests.json
 
-#RUN echo "ulimit -n unlimited" > /etc/default/postgres
-
+# create a fastdata directory for a faster tablespace
 RUN mkdir /fastdata \
  && chown postgres /fastdata
+
+# copy over the database initial data
+COPY ./data /tmp/data
+
+# copy over the database creation scripts
 COPY ./postgresql.conf /etc/postgresql.conf
 COPY ./sql/*.sql /docker-entrypoint-initdb.d/

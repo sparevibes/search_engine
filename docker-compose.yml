@@ -29,12 +29,11 @@ services:
       - pg
   pg:
     build: ./services/pg
-    command: postgres -c config_file=/etc/postgresql.conf
-    volumes:
-      - postgres_fastdata:/fastdata
-        #- postgres_wal:/var/lib/postgresql/data/pg_wal/
-      - /data/volumes/novichenko_18jan:/var/lib/postgresql/data/
-        #- postgres_data:/var/lib/postgresql/data/
+    command: postgres #-c config_file=/etc/postgresql.conf
+    #volumes:
+        # - postgres_fastdata:/fastdata
+        # - postgres_wal:/var/lib/postgresql/data/pg_wal/
+        # - /data/volumes/novichenko_18jan:/var/lib/postgresql/data/
     env_file:
       - ./.env.prod.db
 
@@ -42,5 +41,5 @@ networks:
   default:
     name: novichenko
 
-volumes:
-  postgres_fastdata:
+#volumes:
+#  postgres_fastdata:
