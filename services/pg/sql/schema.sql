@@ -30,7 +30,7 @@ $$ LANGUAGE 'sql' STRICT IMMUTABLE PARALLEL SAFE;
  * this function truncates the input to an acceptable size
  */
 CREATE OR REPLACE FUNCTION btree_sanitize(t TEXT)
-RETURNS TEXT language plpgsql IMMUTABLE STRICT PARALLEL SAFE
+RETURNS TEXT LANGUAGE plpgsql IMMUTABLE STRICT PARALLEL SAFE
 AS $$
 BEGIN
     RETURN SUBSTRING(t FOR 2048);
@@ -52,7 +52,7 @@ $$;
  * FIXME: what to do for mailto:blah@gmail.com ?
  */
 CREATE OR REPLACE FUNCTION url_remove_scheme(url TEXT)
-RETURNS TEXT language plpgsql IMMUTABLE STRICT PARALLEL SAFE
+RETURNS TEXT LANGUAGE plpgsql IMMUTABLE STRICT PARALLEL SAFE
 AS $$
 BEGIN
     RETURN COALESCE(SUBSTRING(url, '[^:/]*//(.*)'),url);
@@ -75,7 +75,7 @@ $$ LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE FUNCTION url_host(url TEXT)
-RETURNS TEXT language plpgsql IMMUTABLE STRICT PARALLEL SAFE
+RETURNS TEXT LANGUAGE plpgsql IMMUTABLE STRICT PARALLEL SAFE
 AS $$
 DECLARE
     url_without_scheme TEXT = url_remove_scheme(url);
@@ -100,7 +100,7 @@ $$ LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE FUNCTION url_path(url TEXT)
-RETURNS TEXT language plpgsql IMMUTABLE STRICT PARALLEL SAFE
+RETURNS TEXT LANGUAGE plpgsql IMMUTABLE STRICT PARALLEL SAFE
 AS $$
 DECLARE
     url_without_scheme TEXT = url_remove_scheme(url);
@@ -137,7 +137,7 @@ $$ LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE FUNCTION url_query(url TEXT)
-RETURNS TEXT language plpgsql IMMUTABLE STRICT PARALLEL SAFE
+RETURNS TEXT LANGUAGE plpgsql IMMUTABLE STRICT PARALLEL SAFE
 AS $$
 BEGIN
     RETURN COALESCE(SUBSTRING(url, '\?([^?#]*)'),'');
@@ -172,7 +172,7 @@ $$ LANGUAGE plpgsql;
  * remove extraneous leading subdomains from a host
  */
 CREATE OR REPLACE FUNCTION host_simplify(host TEXT)
-RETURNS TEXT language plpgsql IMMUTABLE STRICT PARALLEL SAFE
+RETURNS TEXT LANGUAGE plpgsql IMMUTABLE STRICT PARALLEL SAFE
 AS $$
 BEGIN
     RETURN COALESCE(
@@ -204,7 +204,7 @@ $$ LANGUAGE plpgsql;
  * so string matches starting from the left hand side become increasingly specific
  */
 CREATE OR REPLACE FUNCTION host_key(host TEXT)
-RETURNS TEXT language plpgsql IMMUTABLE STRICT PARALLEL SAFE
+RETURNS TEXT LANGUAGE plpgsql IMMUTABLE STRICT PARALLEL SAFE
 AS $$
 BEGIN
     RETURN array_to_string(array_reverse(string_to_array(host,'.')),',')||')';
@@ -223,7 +223,7 @@ $$ LANGUAGE plpgsql;
  * converts from the host_key syntax into the standard host syntax;
  */
 CREATE OR REPLACE FUNCTION host_unkey(host TEXT)
-RETURNS TEXT language plpgsql IMMUTABLE STRICT PARALLEL SAFE
+RETURNS TEXT LANGUAGE plpgsql IMMUTABLE STRICT PARALLEL SAFE
 AS $$
 BEGIN
     RETURN array_to_string(array_reverse(string_to_array(substring(host from 0 for char_length(host)),',')),'.');
@@ -245,7 +245,7 @@ $$ LANGUAGE plpgsql;
  * but this is extremely rare in practice
  */
 CREATE OR REPLACE FUNCTION path_simplify(path TEXT)
-RETURNS TEXT language plpgsql IMMUTABLE STRICT PARALLEL SAFE
+RETURNS TEXT LANGUAGE plpgsql IMMUTABLE STRICT PARALLEL SAFE
 AS $$
 DECLARE
     path_without_index TEXT = COALESCE(
@@ -282,7 +282,7 @@ $$ LANGUAGE plpgsql;
  * for the sorting step, see: https://stackoverflow.com/questions/2913368/sorting-array-elements
  */
 CREATE OR REPLACE FUNCTION query_simplify(query TEXT)
-RETURNS TEXT language plpgsql IMMUTABLE STRICT PARALLEL SAFE
+RETURNS TEXT LANGUAGE plpgsql IMMUTABLE STRICT PARALLEL SAFE
 AS $$
 BEGIN
     RETURN array_to_string(array(
@@ -309,7 +309,7 @@ $$ LANGUAGE plpgsql;
 -- functions for indexing
 
 CREATE OR REPLACE FUNCTION url_host_key(url TEXT)
-RETURNS TEXT language plpgsql IMMUTABLE STRICT PARALLEL SAFE
+RETURNS TEXT LANGUAGE plpgsql IMMUTABLE STRICT PARALLEL SAFE
 AS $$
 DECLARE
     url_lower TEXT = lower(url);
@@ -334,7 +334,7 @@ $$ LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE FUNCTION url_hostpath_key(url TEXT)
-RETURNS TEXT language plpgsql IMMUTABLE STRICT PARALLEL SAFE
+RETURNS TEXT LANGUAGE plpgsql IMMUTABLE STRICT PARALLEL SAFE
 AS $$
 DECLARE
     url_lower TEXT = lower(url);
@@ -359,7 +359,7 @@ $$ LANGUAGE plpgsql;
 
 
 CREATE OR REPLACE FUNCTION url_hostpathquery_key(url TEXT)
-RETURNS TEXT language plpgsql IMMUTABLE STRICT PARALLEL SAFE
+RETURNS TEXT LANGUAGE plpgsql IMMUTABLE STRICT PARALLEL SAFE
 AS $$
 DECLARE
     url_lower TEXT = lower(url);
