@@ -420,10 +420,6 @@ CREATE TABLE metahtml_test (
 );
 COPY metahtml_test(jsonb) FROM '/tmp/metahtml/golden.jsonl';
 
-/*
--- FIXME:
--- this generates an error for some reasons;
--- is it due to the lack of a where clause?
 SELECT create_rollup(
     'metahtml_test',
     'metahtml_test_rollup',
@@ -434,7 +430,6 @@ SELECT create_rollup(
         url_host_key(jsonb->>'url') AS host
     $$
 );
-*/
 
 SELECT create_rollup(
     'metahtml_test',
@@ -503,6 +498,170 @@ CREATE VIEW hostnames_untested AS (
         )
     ORDER BY country,hostname
     );
+
+/*
+ * uses data scraped from allsides.com
+ */
+CREATE TABLE allsides (
+    id_allsides SERIAL PRIMARY KEY,
+    url TEXT,
+    type TEXT,
+    name TEXT,
+    bias TEXT
+);
+COPY allsides(url,type,name,bias) FROM '/tmp/data/allsides/allsides.csv' CSV HEADER;
+
+CREATE VIEW allsides_untested AS (
+    SELECT DISTINCT
+        url_host_key(url) AS host_key
+    FROM allsides
+    WHERE
+        url_host_key(url) NOT IN (
+            SELECT DISTINCT url_host_key(jsonb->>'url')
+            FROM metahtml_test
+        )
+    ORDER BY host_key
+    );
+
+SELECT create_rollup(
+    'allsides',
+    'allsides_rollup_type',
+    wheres => $$
+        type
+    $$
+);
+
+SELECT create_rollup(
+    'allsides',
+    'allsides_rollup_bias',
+    wheres => $$
+        bias
+    $$
+);
+
+SELECT create_rollup(
+    'allsides',
+    'allsides_rollup_typebias',
+    wheres => $$
+        type,
+        bias
+    $$
+);
+
+/*
+ * uses data scraped from mediabiasfactcheck.com
+ */
+CREATE TABLE mediabiasfactcheck (
+    id_allsides SERIAL PRIMARY KEY,
+    url TEXT,
+    name TEXT,
+    image_pseudoscience TEXT,
+    image_factual TEXT,
+    image_conspiracy TEXT,
+    image_bias TEXT,
+    freedom_rank TEXT,
+    country TEXT
+);
+COPY mediabiasfactcheck(url,name,image_pseudoscience,image_factual,image_conspiracy,image_bias,freedom_rank,country) FROM '/tmp/data/mediabiasfactcheck/mediabiasfactcheck.csv' CSV HEADER;
+
+CREATE VIEW mediabiasfactcheck_untested AS (
+    SELECT DISTINCT
+        url_host_key(url) AS host_key
+    FROM mediabiasfactcheck
+    WHERE
+        url_host_key(url) NOT IN (
+            SELECT DISTINCT url_host_key(jsonb->>'url')
+            FROM metahtml_test
+        )
+    ORDER BY host_key
+    );
+
+SELECT create_rollup(
+    'mediabiasfactcheck',
+    'mediabiasfactcheck_rollup_image_bias',
+    wheres => $$
+        image_bias
+    $$
+);
+
+SELECT create_rollup(
+    'mediabiasfactcheck',
+    'mediabiasfactcheck_rollup_image_conspiracy',
+    wheres => $$
+        image_conspiracy
+    $$
+);
+
+SELECT create_rollup(
+    'mediabiasfactcheck',
+    'mediabiasfactcheck_rollup_image_pseudoscience',
+    wheres => $$
+        image_pseudoscience
+    $$
+);
+
+SELECT create_rollup(
+    'mediabiasfactcheck',
+    'mediabiasfactcheck_rollup_image_factual',
+    wheres => $$
+        image_factual
+    $$
+);
+
+SELECT create_rollup(
+    'mediabiasfactcheck',
+    'mediabiasfactcheck_rollup_country',
+    wheres => $$
+        country
+    $$
+);
+
+/*
+ * This dataset annotates the bias of specific urls
+ * See: https://deepblue.lib.umich.edu/data/concern/data_sets/8w32r569d?locale=en
+ */
+CREATE TABLE quantifyingnewsmediabias (
+    id_quantifyingnewsmediabias SERIAL PRIMARY KEY,
+    url TEXT,
+    q3 TEXT,
+    perceived SMALLINT,
+    primary_topic TEXT,
+    secondary_topic TEXT,
+    democrat_vote TEXT,
+    republican_vote TEXT
+);
+COPY quantifyingnewsmediabias(url,q3,perceived,primary_topic,secondary_topic,democrat_vote,republican_vote) FROM '/tmp/data/QuantifyingNewsMediaBias/newsArticlesWithLabels.tsv' DELIMITER E'\t' CSV HEADER;
+
+CREATE VIEW quantifyingnewsmediabias_untested AS (
+    SELECT DISTINCT
+        url_host_key(url) AS host_key
+    FROM quantifyingnewsmediabias
+    WHERE
+        url_host_key(url) NOT IN (
+            SELECT DISTINCT url_host_key(jsonb->>'url')
+            FROM metahtml_test
+        )
+    ORDER BY host_key
+    );
+
+SELECT create_rollup(
+    'quantifyingnewsmediabias',
+    'quantifyingnewsmediabias_rollup_host',
+    wheres => $$
+        url_host_key(url) AS host
+    $$
+);
+
+SELECT create_rollup(
+    'quantifyingnewsmediabias',
+    'quantifyingnewsmediabias_rollup',
+    distincts => $$
+        url AS url,
+        url_hostpathquery_key(url) AS hostpathquery,
+        url_hostpath_key(url) AS hostpath,
+        url_host_key(url) AS host
+    $$
+);
 
 /*******************************************************************************
  * main tables

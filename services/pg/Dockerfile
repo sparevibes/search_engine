@@ -89,6 +89,7 @@ RUN mkdir /fastdata \
 
 # copy over the database initial data
 COPY ./data /tmp/data
+RUN chown postgres -R /tmp/data
 
 # copy over the database creation scripts
 COPY ./postgresql.conf /etc/postgresql.conf

@@ -1,0 +1,6 @@
+[submodule "services/pg/data/allsides"]
+	path = services/pg/data/allsides
+	url = https://github.com/mikeizbicki/allsides
+[submodule "services/pg/data/mediabiasfactcheck"]
+	path = services/pg/data/mediabiasfactcheck
+	url = https://github.com/mikeizbicki/mediabiasfactcheck
