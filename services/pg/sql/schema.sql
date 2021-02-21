@@ -37,19 +37,6 @@ BEGIN
 END
 $$;
 
-/*
- * converts a string into a truncated UTC timestamp
- * FIXME:
- * should we delete this?
- */
-CREATE OR REPLACE FUNCTION simplify_timestamp(field TEXT, t TEXT)
-RETURNS TEXT language plpgsql IMMUTABLE STRICT PARALLEL SAFE
-AS $$
-BEGIN
-    RETURN date_trunc(field,t::timestamptz AT TIME ZONE 'UTC');
-END
-$$;
-
 /*******************************************************************************
  * functions for extracting the components of a url stored as text
  * NOTE:
