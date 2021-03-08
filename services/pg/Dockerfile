@@ -67,6 +67,7 @@ ADD https://api.github.com/repos/mikeizbicki/pg_rollup/git/refs/heads/master /tm
 RUN cd /tmp \
  && git clone https://github.com/mikeizbicki/pg_rollup \
  && cd pg_rollup \
+ && sh install_dependencies.sh \
  && pip3 install . \
  && make USE_PGXS=1 \
  && make USE_PGXS=1 install \
