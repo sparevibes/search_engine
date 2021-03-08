@@ -8,7 +8,7 @@ class Config(object):
     STATIC_FOLDER = f"{os.getenv('APP_FOLDER')}/project/static"
 
     # postgres connection
-    POSTGRES_USER = os.environ.get('POSTGRES_USER')
-    POSTGRES_PASSWORD = os.environ.get('POSTGRES_PASSWORD')
-    POSTGRES_DB = os.environ.get('POSTGRES_DB')
-    DB_URI = f'postgres://{POSTGRES_USER}:{POSTGRES_PASSWORD}@db/{POSTGRES_DB}'
+    DB_USER = os.environ.get('DB_USER')
+    DB_PASSWORD = os.environ.get('DB_PASSWORD')
+    DB_NAME = os.environ.get('DB_NAME')
+    DB_URI = f'postgres://{DB_USER}:{DB_PASSWORD}@db/{DB_NAME}'

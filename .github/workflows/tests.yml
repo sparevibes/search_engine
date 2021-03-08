@@ -11,10 +11,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - name: docker
+    - name: start docker
       run: |
+        sh scripts/create_passwords.sh
         docker-compose build
         docker-compose up -d
-        sleep 120
-        sh tests/check_web_endpoints.sh
+        sleep 20
+    - name: scripts/check_web_endpoints.sh
+      run: |
+        sh scripts/check_web_endpoints.sh
+    - name: stop docker
+      run: |
         docker-compose down

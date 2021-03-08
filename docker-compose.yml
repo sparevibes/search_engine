@@ -10,9 +10,10 @@ services:
       - 5000:5000
     env_file:
       - ./.env.prod
-      - ./.env.prod.db
     environment:
       - FLASK_DEBUG=1
+      - APP_FOLDER=/home/app/web
+      - FLASK_APP=project/__init__.py
     depends_on:
       - db
   db:
@@ -24,7 +25,7 @@ services:
       - POOL_MODE=transaction
       - DB_HOST=pg
     env_file:
-      - ./.env.prod.pgbouncer
+      - ./.env.prod
     depends_on:
       - pg
   pg:
@@ -35,7 +36,7 @@ services:
         # - postgres_wal:/var/lib/postgresql/data/pg_wal/
         # - /data/volumes/novichenko_18jan:/var/lib/postgresql/data/
     env_file:
-      - ./.env.prod.db
+      - ./.env.prod
 
 networks:
   default:
