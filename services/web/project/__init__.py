@@ -150,6 +150,8 @@ def metahtml():
 @app.route('/search')
 def search():
     query = request.args.get('query')
+    if query is None:
+        return index()
     ts_query = pspacy.lemmatize_query('en', query)
     sql=text(f'''
     SELECT 
@@ -183,6 +185,9 @@ def search():
 def ngrams():
 
     query = request.args.get('query')
+    if query is None:
+        return index()
+
     ts_query = pspacy.lemmatize_query('en', query)
 
     terms = [ term for term in ts_query.split() if term != '&' ]
@@ -201,7 +206,7 @@ def ngrams():
     ) as x
     left outer join (
         select
-            distinct_hostpath as total,
+            hostpath as total,
             where_timestamp_published as time
         from metahtml_rollup_langmonth
         where 
@@ -210,7 +215,7 @@ def ngrams():
             and where_timestamp_published <= '2020-12-31 23:59:59'
         /*
         select
-            sum(distinct_hostpath) as total,
+            sum(hostpath) as total,
             date_trunc('month',where_timestamp_published) as time
         from metahtml_rollup_hostpub
         where 
@@ -224,7 +229,7 @@ def ngrams():
     '''.join([f'''
     left outer join (
         select
-            distinct_hostpath as y{i},
+            hostpath as y{i},
             where_timestamp_published as time
         from metahtml_rollup_textlangmonth
         where 
@@ -234,7 +239,7 @@ def ngrams():
             and where_timestamp_published <= '2020-12-31 23:59:59'
         /*
         select
-            sum(distinct_hostpath) as y{i},
+            sum(hostpath) as y{i},
             date_trunc('month',where_timestamp_published) as time
         from metahtml_rollup_texthostpub
         where 
@@ -305,6 +310,7 @@ def staticfiles(filename):
 @app.before_request
 def before_request():
     g.start = time.time()
+    print("app.config['DB_URI']=",app.config['DB_URI'])
     engine = sqlalchemy.create_engine(app.config['DB_URI'], connect_args={
         'connect_timeout': 10,
         'application_name': 'novichenko/web',

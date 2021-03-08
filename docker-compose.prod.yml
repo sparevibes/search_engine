@@ -6,7 +6,7 @@ services:
     volumes:
       - static_volume:/home/app/web/project/static
     ports:
-      - 3400:80
+      - 5000:80
     depends_on:
       - web
   web:
@@ -38,13 +38,13 @@ services:
   pg:
     build: ./services/pg
     command: postgres -c config_file=/etc/postgresql.conf
-    volumes:
+    #volumes:
         #- postgres_data:/var/lib/postgresql/data/
-      - postgres_fastdata:/fastdata
-      - /data/volumes/novichenko_18jan:/var/lib/postgresql/data/
+        #- postgres_fastdata:/fastdata
+        #- /data/volumes/novichenko_18jan:/var/lib/postgresql/data/
     env_file:
       - ./.env.prod.db
 
 volumes:
   static_volume:
-  postgres_fastdata:
+      #postgres_fastdata:
