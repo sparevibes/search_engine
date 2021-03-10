@@ -8,9 +8,6 @@ services:
     depends_on:
       - web
   web:
-      #build: 
-      #context: ./services/web
-      #dockerfile: Dockerfile.prod
     build: ./services/web
     volumes:
       - static_volume:/home/app/web/project/static

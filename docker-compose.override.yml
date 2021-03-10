@@ -3,7 +3,7 @@ services:
     build: ./services/web
     command: python manage.py run -h 0.0.0.0
     volumes:
-      - ./services/web/:/usr/src/app/
+      - ./services/web/:/home/app/web
     ports:
       - 5000:5000
     env_file:

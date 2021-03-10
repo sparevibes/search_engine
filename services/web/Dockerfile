@@ -50,3 +50,4 @@ USER app
 
 # run entrypoint.sh
 #ENTRYPOINT ["/usr/src/app/entrypoint.sh"]
+EXPOSE 5000

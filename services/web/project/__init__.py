@@ -192,6 +192,13 @@ def ngrams():
 
     terms = [ term for term in ts_query.split() if term != '&' ]
 
+    if len(terms)<1:
+        # FIXME:
+        # if there are no query terms in the query parameter after filtering, we should probably display an error message
+        return render_template(
+            'fullsearch.html',
+            )
+
     sql=text(f'''
     select  
         extract(epoch from x.time ) as x,

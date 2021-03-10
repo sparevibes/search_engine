@@ -15,7 +15,7 @@ services:
       - pg
   pg:
     build: ./services/pg
-    command: postgres #-c config_file=/etc/postgresql.conf
+    command: postgres -c config_file=/etc/postgresql.conf
     #volumes:
         # - postgres_fastdata:/fastdata
         # - postgres_wal:/var/lib/postgresql/data/pg_wal/

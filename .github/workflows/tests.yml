@@ -14,19 +14,33 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+    - name: get submodules
+      run: |
+        git submodule init
+        git submodule update
     - name: start docker
       run: |
         sh scripts/create_passwords.sh
         if [ "${{matrix.ENV}}" = 'dev' ]; then
             docker-compose build
         elif [ "${{matrix.ENV}}" = 'prod' ]; then
-            docker-compose build -f docker-compose.yml -f docker-compose.prod.yml
+            docker-compose -f docker-compose.yml -f docker-compose.prod.yml build
         fi
         docker-compose up -d
         until docker-compose exec -T pg psql --user=novichenko <<< '\l'
         do
             sleep 1
         done
+        sudo apt-get update && sudo apt-get install -y net-tools
+        sudo netstat -tunlp || true
+    - name: docker logs
+      run: |
+        docker ps
+        docker-compose logs
+        docker-compose port web 5000
+    - name: pytest
+      run: |
+        docker-compose exec -T web python3 -m pytest
     - name: scripts/check_web_endpoints.sh
       run: |
         sh scripts/check_web_endpoints.sh
