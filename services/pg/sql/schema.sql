@@ -4,11 +4,12 @@ BEGIN;
 
 \set ON_ERROR_STOP on
 
-CREATE EXTENSION IF NOT EXISTS rum;
-CREATE EXTENSION IF NOT EXISTS hll;
-CREATE EXTENSION IF NOT EXISTS pspacy;
-CREATE EXTENSION IF NOT EXISTS pg_rollup;
-CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+CREATE LANGUAGE plpython3u;
+CREATE EXTENSION rum;
+CREATE EXTENSION hll;
+CREATE EXTENSION pspacy;
+CREATE EXTENSION pg_rollup;
+CREATE EXTENSION pg_stat_statements;
 
 /*******************************************************************************
  * generic helper functions

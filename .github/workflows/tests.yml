@@ -4,19 +4,29 @@ on:
     branches: ['*']
   pull_request:
     branches: ['*']
-  #schedule:
-    #- cron:  '0 12 10 * *' # Monthly at noon on the tenth
+  schedule:
+    - cron:  '0 12 10 * *' # Monthly at noon on the tenth
 jobs:
   docker:
+    strategy:
+      matrix:
+        ENV: ["dev", "prod"]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
     - name: start docker
       run: |
         sh scripts/create_passwords.sh
-        docker-compose build
+        if [ "${{matrix.ENV}}" = 'dev' ]; then
+            docker-compose build
+        elif [ "${{matrix.ENV}}" = 'prod' ]; then
+            docker-compose build -f docker-compose.yml -f docker-compose.prod.yml
+        fi
         docker-compose up -d
-        sleep 120
+        until docker-compose exec -T pg psql --user=novichenko <<< '\l'
+        do
+            sleep 1
+        done
     - name: scripts/check_web_endpoints.sh
       run: |
         sh scripts/check_web_endpoints.sh

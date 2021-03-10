@@ -1,4 +1,4 @@
-FROM postgres:12
+FROM postgres:13
 
 # install system packages for building postgres extensions
 RUN apt-get update && apt-get install -y \
@@ -6,8 +6,8 @@ RUN apt-get update && apt-get install -y \
     gcc \
     less \
     make \
-    postgresql-server-dev-12 \
-    postgresql-plpython3-12 \
+    postgresql-server-dev-13 \
+    postgresql-plpython3-13 \
     python3 \
     python3-pip \
     sudo \
@@ -33,14 +33,6 @@ RUN cd /tmp \
  && rm -rf /tmp/git-2.30.1
 
 # install postgres extensions from source
-RUN cd /tmp \
- && git clone https://github.com/citusdata/postgresql-hll \
- && cd postgresql-hll \
- && git checkout v2.15 \
- && make \
- && make install \
- && rm -rf /tmp/postgresql-hll
-
 RUN cd /tmp \
  && git clone https://github.com/postgrespro/rum \
  && cd rum \

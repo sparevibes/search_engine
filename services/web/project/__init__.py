@@ -310,7 +310,6 @@ def staticfiles(filename):
 @app.before_request
 def before_request():
     g.start = time.time()
-    print("app.config['DB_URI']=",app.config['DB_URI'])
     engine = sqlalchemy.create_engine(app.config['DB_URI'], connect_args={
         'connect_timeout': 10,
         'application_name': 'novichenko/web',

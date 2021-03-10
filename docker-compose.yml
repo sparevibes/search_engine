@@ -1,21 +1,6 @@
 version: '3.7'
 
 services:
-  web:
-    build: ./services/web
-    command: python manage.py run -h 0.0.0.0
-    volumes:
-      - ./services/web/:/usr/src/app/
-    ports:
-      - 5000:5000
-    env_file:
-      - ./.env.prod
-    environment:
-      - FLASK_DEBUG=1
-      - APP_FOLDER=/home/app/web
-      - FLASK_APP=project/__init__.py
-    depends_on:
-      - db
   db:
     image: edoburu/pgbouncer:1.15.0
     environment:
