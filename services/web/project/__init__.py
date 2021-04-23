@@ -78,7 +78,7 @@ def host():
                 *
             FROM {table} 
             WHERE
-                where_host like :host_pattern
+                host like :host_pattern
             ORDER BY
                 count desc
             LIMIT 20
@@ -214,20 +214,20 @@ def ngrams():
     left outer join (
         select
             hostpath as total,
-            where_timestamp_published as time
+            timestamp_published as time
         from metahtml_rollup_langmonth
         where 
-                where_language = 'en'
-            and where_timestamp_published >= '2000-01-01 00:00:00' 
-            and where_timestamp_published <= '2020-12-31 23:59:59'
+                language = 'en'
+            and timestamp_published >= '2000-01-01 00:00:00' 
+            and timestamp_published <= '2020-12-31 23:59:59'
         /*
         select
             sum(hostpath) as total,
-            date_trunc('month',where_timestamp_published) as time
+            date_trunc('month',timestamp_published) as time
         from metahtml_rollup_hostpub
         where 
-                where_timestamp_published >= '2000-01-01 00:00:00' 
-            and where_timestamp_published <= '2020-12-31 23:59:59'
+                timestamp_published >= '2000-01-01 00:00:00' 
+            and timestamp_published <= '2020-12-31 23:59:59'
         group by time
         */
     ) total on total.time=x.time
@@ -237,22 +237,22 @@ def ngrams():
     left outer join (
         select
             hostpath as y{i},
-            where_timestamp_published as time
+            timestamp_published as time
         from metahtml_rollup_textlangmonth
         where 
-            where_alltext = :term{i}
-            and where_language = 'en'
-            and where_timestamp_published >= '2000-01-01 00:00:00' 
-            and where_timestamp_published <= '2020-12-31 23:59:59'
+            alltext = :term{i}
+            and language = 'en'
+            and timestamp_published >= '2000-01-01 00:00:00' 
+            and timestamp_published <= '2020-12-31 23:59:59'
         /*
         select
             sum(hostpath) as y{i},
-            date_trunc('month',where_timestamp_published) as time
+            date_trunc('month',timestamp_published) as time
         from metahtml_rollup_texthostpub
         where 
-            where_alltext = :term{i}
-            and where_timestamp_published >= '2000-01-01 00:00:00' 
-            and where_timestamp_published <= '2020-12-31 23:59:59'
+            alltext = :term{i}
+            and timestamp_published >= '2000-01-01 00:00:00' 
+            and timestamp_published <= '2020-12-31 23:59:59'
         group by time
         */
     ) y{i} on x.time=y{i}.time
@@ -314,13 +314,15 @@ def staticfiles(filename):
 # see: https://stackoverflow.com/questions/12273889/calculate-execution-time-for-every-page-in-pythons-flask
 ################################################################################
 
+engine = sqlalchemy.create_engine(app.config['DB_URI'], connect_args={
+    'connect_timeout': 10,
+    'application_name': 'novichenko/web',
+    })
+
+
 @app.before_request
 def before_request():
     g.start = time.time()
-    engine = sqlalchemy.create_engine(app.config['DB_URI'], connect_args={
-        'connect_timeout': 10,
-        'application_name': 'novichenko/web',
-        })
     g.connection = engine.connect()
 
 

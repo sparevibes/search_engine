@@ -52,18 +52,19 @@ RUN cd /tmp \
  && make USE_PGXS=1 \
  && make USE_PGXS=1 install
 
-# install pg_rollup
+# install pgrollup
 # FIXME:
 # should we add a git checkout version?
-ADD https://api.github.com/repos/mikeizbicki/pg_rollup/git/refs/heads/master /tmp/pg_rollup.version
+ADD https://api.github.com/repos/mikeizbicki/pgrollup/git/refs/heads/master /tmp/pg_rollup.version
 RUN cd /tmp \
- && git clone https://github.com/mikeizbicki/pg_rollup \
- && cd pg_rollup \
+ && git clone https://github.com/mikeizbicki/pgrollup \
+ && cd pgrollup \
  && sh install_dependencies.sh \
+ && pip3 install -r requirements.txt \
  && pip3 install . \
  && make USE_PGXS=1 \
  && make USE_PGXS=1 install \
- && rm -rf /tmp/pg_rollup
+ && rm -rf /tmp/pgrollup
 
 # install metahtml; this requires the new version of git
 ADD https://api.github.com/repos/mikeizbicki/metahtml/git/refs/heads/master /tmp/metahtml.version

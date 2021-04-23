@@ -3,14 +3,14 @@
 # load environment variables
 while read var; do
     export $var
-done < .env.prod.db
+done < .env.prod
 
 # generate a unique hashid
 hashid=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
 
 # build the docker container
-#cd services/downloader_warc
-#docker build -t novichenko/downloader_warc .
+cd services/downloader_warc
+docker build -t novichenko/downloader_warc .
 
 cc_url=$1
 name=$(basename $(dirname $cc_url))

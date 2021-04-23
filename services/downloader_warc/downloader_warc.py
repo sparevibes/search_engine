@@ -77,7 +77,7 @@ def process_warc_from_url(connection, warc_url):
     res = connection.execute(sql,{'id':id_source})
 
 
-def process_warc_from_disk(connection, warc_path, id_source, batch_size=1000):
+def process_warc_from_disk(connection, warc_path, id_source, batch_size=100):
     '''
     '''
     with open(warc_path, 'rb') as stream:

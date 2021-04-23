@@ -11,4 +11,4 @@ class Config(object):
     DB_USER = os.environ.get('DB_USER')
     DB_PASSWORD = os.environ.get('DB_PASSWORD')
     DB_NAME = os.environ.get('DB_NAME')
-    DB_URI = f'postgres://{DB_USER}:{DB_PASSWORD}@db/{DB_NAME}'
+    DB_URI = f'postgresql://{DB_USER}:{DB_PASSWORD}@db/{DB_NAME}'
