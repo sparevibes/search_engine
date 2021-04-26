@@ -4,8 +4,6 @@ host='localhost:5000'
 
 routes="
 /
-/search
-/search?query=trump
 /ngrams
 /ngrams?query=trump
 "
