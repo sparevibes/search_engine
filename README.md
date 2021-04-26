@@ -2,6 +2,13 @@
 
 In this assignment you will create a highly scalable web search engine.
 
+**Due Date:** Sunday, 9 May
+
+**Learning Objectives:**
+1. Learn to work with a moderate large software project
+1. Learn to parallelize data analysis work off the database
+1. Increased familiarity with indexes and rollup tables for speeding up queries
+
 ## Task 0: project setup
 
 1. Fork this github repo
