@@ -18,7 +18,7 @@ In this assignment you will create a highly scalable web search engine.
     1. bring down any running docker containers
     1. run the command
        ```
-       $ docker volume prune
+       $ docker system prune
        ```
 
 ## Task 1: getting the system running
