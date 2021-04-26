@@ -63,45 +63,6 @@ def index():
         )
 
 
-@app.route('/host')
-def host():
-    host = request.args.get('host')
-    if host is None:
-        return render_template(
-            'index',
-            )
-    else:
-
-        def table2html(table):
-            sql=text(f'''
-            SELECT 
-                *
-            FROM {table} 
-            WHERE
-                host like :host_pattern
-            ORDER BY
-                count desc
-            LIMIT 20
-            ''')
-            res = g.connection.execute(sql,{
-                'host_pattern':'%'+host
-                })
-            return f'<h3>{table}</h3>{res2html(res)}'
-        tables = [
-            'metahtml_exceptions_host',
-            #'metahtml_rollup_host',
-            #'metahtml_rollup_hosttype',
-            #'metahtml_rollup_hostinsert',
-            'metahtml_rollup_hostpub',
-            #'metahtml_rollup_texthostpub'
-            ]
-        return render_template(
-            'host.html',
-            host = host,
-            html_tables = { table:table2html(table) for table in tables }
-            )
-
-
 @app.route('/metahtml')
 def metahtml():
     id = request.args.get('id')
@@ -147,40 +108,6 @@ def metahtml():
             )
 
 
-@app.route('/search')
-def search():
-    query = request.args.get('query')
-    if query is None:
-        return index()
-    ts_query = pspacy.lemmatize_query('en', query)
-    sql=text(f'''
-    SELECT 
-        id,
-        jsonb->'title'->'best'->>'value' AS title,
-        jsonb->'description'->'best'->>'value' AS description
-    FROM metahtml
-    WHERE
-        to_tsquery('simple', :ts_query) @@ content AND
-        jsonb->'type'->'best'->>'value' = 'article'
-        /*
-        to_tsquery('simple', :ts_query) @@ spacy_tsvector(
-            jsonb->'language'->'best'->>'value',
-            jsonb->'title'->'best'->>'value'
-            )
-        */
-    OFFSET 0
-    LIMIT 10
-    ''')
-    res=g.connection.execute(sql,{
-        'ts_query':ts_query
-        })
-    return render_template(
-        'search.html',
-        query=query,
-        results=res
-        )
-
-
 @app.route('/ngrams')
 def ngrams():
 
@@ -193,8 +120,6 @@ def ngrams():
     terms = [ term for term in ts_query.split() if term != '&' ]
 
     if len(terms)<1:
-        # FIXME:
-        # if there are no query terms in the query parameter after filtering, we should probably display an error message
         return render_template(
             'fullsearch.html',
             )
@@ -220,16 +145,6 @@ def ngrams():
                 language = 'en'
             and timestamp_published >= '2000-01-01 00:00:00' 
             and timestamp_published <= '2020-12-31 23:59:59'
-        /*
-        select
-            sum(hostpath) as total,
-            date_trunc('month',timestamp_published) as time
-        from metahtml_rollup_hostpub
-        where 
-                timestamp_published >= '2000-01-01 00:00:00' 
-            and timestamp_published <= '2020-12-31 23:59:59'
-        group by time
-        */
     ) total on total.time=x.time
     '''
     +'''
@@ -244,17 +159,6 @@ def ngrams():
             and language = 'en'
             and timestamp_published >= '2000-01-01 00:00:00' 
             and timestamp_published <= '2020-12-31 23:59:59'
-        /*
-        select
-            sum(hostpath) as y{i},
-            date_trunc('month',timestamp_published) as time
-        from metahtml_rollup_texthostpub
-        where 
-            alltext = :term{i}
-            and timestamp_published >= '2000-01-01 00:00:00' 
-            and timestamp_published <= '2020-12-31 23:59:59'
-        group by time
-        */
     ) y{i} on x.time=y{i}.time
     ''' for i,term in enumerate(terms) ])
     +
@@ -279,12 +183,6 @@ def ngrams():
     WHERE
         to_tsquery('simple', :ts_query) @@ content AND
         jsonb->'type'->'best'->>'value' = 'article'
-        /*
-        to_tsquery('simple', :ts_query) @@ spacy_tsvector(
-            jsonb->'language'->'best'->>'value',
-            jsonb->'title'->'best'->>'value'
-            )
-        */
     OFFSET 0
     LIMIT 10
     ''')

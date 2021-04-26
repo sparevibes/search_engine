@@ -12,16 +12,11 @@ services:
   pg:
     build: ./services/pg
     command: postgres -c config_file=/etc/postgresql.conf
-    #volumes:
-        # - postgres_fastdata:/fastdata
-        # - postgres_wal:/var/lib/postgresql/data/pg_wal/
-        # - /data/volumes/novichenko_18jan:/var/lib/postgresql/data/
+    volumes:
+        - $HOME/bigdata/search_engine:/var/lib/postgresql/data
     env_file:
       - ./.env.prod
 
 networks:
   default:
     name: novichenko
-
-#volumes:
-#  postgres_fastdata:

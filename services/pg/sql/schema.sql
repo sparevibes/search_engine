@@ -1,9 +1,3 @@
--- FIXME: preprocessor directives control how much of the system to build
--- EXEC SQL DEFINE ALLROLLUPS;
-
--- tablespaces cannot be created within a transaction
-CREATE TABLESPACE fastdata LOCATION '/fastdata';
-
 -- if there is an error in the file, then we should abort;
 -- the entire file is contained within a transaction, so either everything will be defined or nothing
 \set ON_ERROR_STOP on
@@ -70,8 +64,6 @@ $$;
 
 /*
  * remove the scheme from an input url
- *
- * FIXME: what to do for mailto:blah@gmail.com ?
  */
 CREATE OR REPLACE FUNCTION url_remove_scheme(url TEXT)
 RETURNS TEXT LANGUAGE plpgsql IMMUTABLE STRICT PARALLEL SAFE
@@ -426,7 +418,7 @@ CREATE TABLE metahtml_test (
 );
 COPY metahtml_test(jsonb) FROM '/tmp/metahtml/golden.jsonl';
 
-CREATE VIEW metahtml_test_summary AS (
+CREATE MATERIALIZED VIEW metahtml_test_summary AS (
     SELECT
         hll_count(jsonb->>'url') AS url,
         hll_count(url_hostpathquery_key(jsonb->>'url')) AS hostpathquery,
@@ -435,7 +427,7 @@ CREATE VIEW metahtml_test_summary AS (
     FROM metahtml_test
 );
 
-CREATE VIEW metahtml_test_summary_host AS (
+CREATE MATERIALIZED VIEW metahtml_test_summary_host AS (
     SELECT
         url_host_key(jsonb->>'url') AS host,
         hll_count(jsonb->>'url') AS url,
@@ -445,7 +437,7 @@ CREATE VIEW metahtml_test_summary_host AS (
     GROUP BY host
 );
 
-CREATE VIEW metahtml_test_summary_language AS (
+CREATE MATERIALIZED VIEW metahtml_test_summary_language AS (
     SELECT
         jsonb->>'language' AS language,
         hll_count(jsonb->>'url') AS url,
@@ -556,48 +548,6 @@ CREATE VIEW mediabiasfactcheck_untested AS (
     );
 
 /*
-SELECT create_rollup(
-    'mediabiasfactcheck',
-    'mediabiasfactcheck_rollup_image_bias',
-    wheres => $$
-        image_bias
-    $$
-);
-
-SELECT create_rollup(
-    'mediabiasfactcheck',
-    'mediabiasfactcheck_rollup_image_conspiracy',
-    wheres => $$
-        image_conspiracy
-    $$
-);
-
-SELECT create_rollup(
-    'mediabiasfactcheck',
-    'mediabiasfactcheck_rollup_image_pseudoscience',
-    wheres => $$
-        image_pseudoscience
-    $$
-);
-
-SELECT create_rollup(
-    'mediabiasfactcheck',
-    'mediabiasfactcheck_rollup_image_factual',
-    wheres => $$
-        image_factual
-    $$
-);
-
-SELECT create_rollup(
-    'mediabiasfactcheck',
-    'mediabiasfactcheck_rollup_country',
-    wheres => $$
-        country
-    $$
-);
-*/
-
-/*
  * This dataset annotates the bias of specific urls
  * See: https://deepblue.lib.umich.edu/data/concern/data_sets/8w32r569d?locale=en
  */
@@ -664,120 +614,17 @@ CREATE TABLE metahtml (
     content tsvector
 );
 
--- rollups for tracking debug info for the metahtml library
-
--- EXEC SQL IFDEF ALL_ROLLUPS;
-CREATE MATERIALIZED VIEW metahtml_versions AS (
-    SELECT 
-        jsonb->>'version' AS version,
-        hll_count(url) as url,
+CREATE MATERIALIZED VIEW metahtml_rollup_host2 AS (
+    SELECT
+        hll_count(url) AS url,
         hll_count(url_hostpathquery_key(url)) AS hostpathquery,
         hll_count(url_hostpath_key(url)) AS hostpath,
-        hll_count(url_host_key(url)) AS host
+        url_host_key(url) AS host
     FROM metahtml
-    GROUP BY version
+    GROUP BY host
 );
 
--- FIXME:
--- the "type" column is not detailed enough, but str(e) is too detailed.
-CREATE MATERIALIZED VIEW metahtml_exceptions_host AS (
-    SELECT
-        url_host(url) AS host,
-        jsonb->'exception'->>'type' AS type,
-        jsonb->'exception'->>'location' AS location,
-        hll_count(url) AS url,
-        hll_count(url_hostpathquery_key(url)) AS hostpathquery,
-        hll_count(url_hostpath_key(url)) AS hostpath
-    FROM metahtml
-    GROUP BY host,type,location
-);
--- EXEC SQL ENDIF;
-
--- rollup tables for measuring links/pagerank
-
--- FIXME:
--- add an index for finding backlinks
---
---FIXME: these should be in the distincts
---jsonb_array_elements(jsonb->'links.all'->'best'->'value')->>'href' AS dest_url,
---url_hostpathquery_key(jsonb_array_elements(jsonb->'links.all'->'best'->'value')->>'href') AS dest_hostpathquery,
---url_hostpath_key(jsonb_array_elements(jsonb->'links.all'->'best'->'value')->>'href') AS dest_hostpath
-
--- EXEC SQL IFDEF ALLROLLUPS;
-CREATE MATERIALIZED VIEW metahtml_linksall_host AS (
-    SELECT
-        url_host(url) AS src,
-        url_host(jsonb_array_elements(jsonb->'links.all'->'best'->'value')->>'href') AS dest,
-        hll_count(url) AS src_url,
-        hll_count(url_hostpathquery_key(url)) AS src_hostpathquery,
-        hll_count(url_hostpath_key(url)) AS src_hostpath
-    FROM metahtml
-    GROUP BY src,dest
-);
-
-CREATE MATERIALIZED VIEW metahtml_linkscontent_host AS (
-    SELECT
-        url_host(url) AS src,
-        url_host(jsonb_array_elements(jsonb->'links.content'->'best'->'value')->>'href') AS dest,
-        hll_count(url) AS src_url,
-        hll_count(url_hostpathquery_key(url)) AS src_hostpathquery,
-        hll_count(url_hostpath_key(url)) AS src_hostpath
-    FROM metahtml
-    GROUP BY src,dest
-);
-
-/*
--- FIXME:
--- we should add filtering onto this so that we only record exact pagerank details for a small subset of links
-CREATE MATERIALIZED VIEW metahtml_linksall_hostpath AS (
-    SELECT
-        url_hostpath_key(url) AS src,
-        url_hostpath_key(jsonb_array_elements(jsonb->'links.all'->'best'->'value')->>'href') AS dest,
-        count(*)
-    FROM metahtml
-);
-
-CREATE MATERIALIZED VIEW metahtml_linkscontent_hostpath AS (
-    SELECT
-        url_hostpath_key(url) AS src,
-        url_hostpath_key(jsonb_array_elements(jsonb->'links.content'->'best'->'value')->>'href') AS dest,
-        count(*)
-    FROM metahtml
-);
-*/
-
--- EXEC SQL ENDIF;
-
--- rollups for text
-
--- EXEC SQL IFDEF ALLROLLUPS;
-
-CREATE MATERIALIZED VIEW metahtml_rollup_texthostmonth TABLESPACE fastdata AS (
-    SELECT
-        unnest(tsvector_to_array(title || content)) AS alltext,
-        url_host(url) AS host,
-        date_trunc('month',(jsonb->'timestamp.published'->'best'->'value'->>'lo')::timestamptz) AS timestamp_published,
-        hll_count(url) AS url,
-        hll_count(url_hostpathquery_key(url)) AS hostpathquery,
-        hll_count(url_hostpath_key(url)) AS hostpath
-    FROM metahtml
-    GROUP BY alltext,host,timestamp_published
-);
-
-CREATE MATERIALIZED VIEW metahtml_rollup_textmonth TABLESPACE fastdata AS (
-    SELECT
-        unnest(tsvector_to_array(title || content)) AS alltext,
-        date_trunc('month',(jsonb->'timestamp.published'->'best'->'value'->>'lo')::timestamptz) AS timestamp_published,
-        hll_count(url) AS url,
-        hll_count(url_hostpathquery_key(url)) AS hostpathquery,
-        hll_count(url_hostpath_key(url)) AS hostpath
-    FROM metahtml
-    GROUP BY alltext,timestamp_published
-);
-
--- EXEC SQL ENDIF;
-
-CREATE MATERIALIZED VIEW metahtml_rollup_textlangmonth TABLESPACE fastdata AS (
+CREATE MATERIALIZED VIEW metahtml_rollup_textlangmonth AS (
     SELECT
         unnest(tsvector_to_array(title || content)) AS alltext,
         jsonb->'language'->'best'->>'value' AS language, 
@@ -789,7 +636,7 @@ CREATE MATERIALIZED VIEW metahtml_rollup_textlangmonth TABLESPACE fastdata AS (
     GROUP BY alltext,language,timestamp_published
 );
 
-CREATE MATERIALIZED VIEW metahtml_rollup_langmonth TABLESPACE fastdata AS (
+CREATE MATERIALIZED VIEW metahtml_rollup_langmonth AS (
     SELECT
         jsonb->'language'->'best'->>'value' AS language, 
         date_trunc('month',(jsonb->'timestamp.published'->'best'->'value'->>'lo')::timestamptz) AS timestamp_published,
@@ -799,87 +646,6 @@ CREATE MATERIALIZED VIEW metahtml_rollup_langmonth TABLESPACE fastdata AS (
     FROM metahtml
     GROUP BY language,timestamp_published
 );
-
--- other rollups
-
--- EXEC SQL IFDEF ALLROLLUPS;
-
-CREATE MATERIALIZED VIEW metahtml_rollup_langhost AS (
-    SELECT
-        url_host(url) AS host,
-        jsonb->'language'->'best'->>'value' AS language,
-        hll_count(url) AS url,
-        hll_count(url_hostpathquery_key(url)) AS hostpathquery,
-        hll_count(url_hostpath_key(url)) AS hostpath
-    FROM metahtml
-    GROUP BY host,language
-);
-
-CREATE MATERIALIZED VIEW metahtml_rollup_lang AS (
-    SELECT
-        jsonb->'language'->'best'->>'value' AS language,
-        hll_count(url) AS url,
-        hll_count(url_hostpathquery_key(url)) AS hostpathquery,
-        hll_count(url_hostpath_key(url)) AS hostpath
-    FROM metahtml
-    GROUP BY language
-);
-
-CREATE MATERIALIZED VIEW metahtml_rollup_source AS (
-    SELECT
-        id_source,
-        hll_count(url) AS url,
-        hll_count(url_hostpathquery_key(url)) AS hostpathquery,
-        hll_count(url_hostpath_key(url)) AS hostpath,
-        hll_count(url_host_key(url)) AS host
-    FROM metahtml
-    GROUP BY id_source
-);
-
-CREATE MATERIALIZED VIEW metahtml_rollup_type AS (
-    SELECT
-        jsonb->'type'->'best'->>'value' AS type,
-        hll_count(url) AS url,
-        hll_count(url_hostpathquery_key(url)) AS hostpathquery,
-        hll_count(url_hostpath_key(url)) AS hostpath
-    FROM metahtml
-    GROUP BY type
-);
-
-CREATE MATERIALIZED VIEW metahtml_rollup_hosttype AS (
-    SELECT
-        url_host(url) AS host,
-        jsonb->'type'->'best'->>'value' AS type,
-        hll_count(url) AS url,
-        hll_count(url_hostpathquery_key(url)) AS hostpathquery,
-        hll_count(url_hostpath_key(url)) AS hostpath
-    FROM metahtml
-    GROUP BY host,type
-);
-
-CREATE MATERIALIZED VIEW metahtml_rollup_host AS (
-    SELECT
-        url_host(url) AS host,
-        hll_count(id_source) AS id_source,
-        hll_count(url) AS url,
-        hll_count(url_hostpathquery_key(url)) AS hostpathquery,
-        hll_count(url_hostpath_key(url)) AS hostpath
-    FROM metahtml
-    GROUP BY host
-);
-
-CREATE MATERIALIZED VIEW metahtml_rollup_hostaccess AS (
-    SELECT
-        url_host(url) AS host_key,
-        date_trunc('day', accessed_at) AS access_day,
-        hll_count(url) AS url,
-        hll_count(url_hostpathquery_key(url)) AS hostpathquery,
-        hll_count(url_hostpath_key(url)) AS hostpath
-    FROM metahtml
-    GROUP BY host_key,access_day
-);
-
--- EXEC SQL ENDIF;
 
 CREATE MATERIALIZED VIEW metahtml_rollup_insert AS (
     SELECT
@@ -892,74 +658,6 @@ CREATE MATERIALIZED VIEW metahtml_rollup_insert AS (
     FROM metahtml
     GROUP BY insert_hour
 );
-
--- EXEC SQL IFDEF ALLROLLUPS;
-
-CREATE MATERIALIZED VIEW metahtml_rollup_hostinsert AS (
-    SELECT
-        url_host(url) AS host_key,
-        date_trunc('hour', inserted_at) AS insert_hour,
-        hll_count(id_source),
-        hll_count(url) AS url,
-        hll_count(url_hostpathquery_key(url)) AS hostpathquery,
-        hll_count(url_hostpath_key(url)) AS hostpath
-    FROM metahtml
-    GROUP BY host_key,insert_hour
-);
-
-CREATE MATERIALIZED VIEW metahtml_rollup_access AS (
-    SELECT
-        date_trunc('day', accessed_at) AS access_day,
-        hll_count(url) AS url,
-        hll_count(url_hostpathquery_key(url)) AS hostpathquery,
-        hll_count(url_hostpath_key(url)) AS hostpath
-    FROM metahtml
-    GROUP BY access_day
-);
-
-CREATE MATERIALIZED VIEW metahtml_rollup_hostmonth AS (
-    SELECT
-        url_host(url) AS host,
-        date_trunc('month',(jsonb->'timestamp.published'->'best'->'value'->>'lo')::timestamptz) AS timestamp_published,
-        hll_count(url) AS url,
-        hll_count(url_hostpathquery_key(url)) AS hostpathquery,
-        hll_count(url_hostpath_key(url)) AS hostpath
-    FROM metahtml
-    GROUP BY host,timestamp_published
-);
-
-CREATE MATERIALIZED VIEW metahtml_rollup_month TABLESPACE fastdata AS (
-    SELECT
-        date_trunc('month',(jsonb->'timestamp.published'->'best'->'value'->>'lo')::timestamptz) AS timestamp_published,
-        hll_count(url) AS url,
-        hll_count(url_hostpathquery_key(url)) AS hostpathquery,
-        hll_count(url_hostpath_key(url)) AS hostpath
-    FROM metahtml
-    GROUP BY timestamp_published
-);
-
-CREATE MATERIALIZED VIEW metahtml_rollup_pub AS (
-    SELECT
-        date_trunc('day',(jsonb->'timestamp.published'->'best'->'value'->>'lo')::timestamptz) AS timestamp_published,
-        hll_count(url) AS url,
-        hll_count(url_hostpathquery_key(url)) AS hostpathquery,
-        hll_count(url_hostpath_key(url)) AS hostpath
-    FROM metahtml
-    GROUP BY timestamp_published
-);
-
-CREATE MATERIALIZED VIEW metahtml_rollup_accesspub AS (
-    SELECT
-        date_trunc('day', accessed_at) AS access_day,
-        date_trunc('day',(jsonb->'timestamp.published'->'best'->'value'->>'lo')::timestamptz) AS timestamp_published,
-        hll_count(url) AS url,
-        hll_count(url_hostpathquery_key(url)) AS hostpathquery,
-        hll_count(url_hostpath_key(url)) AS hostpath
-    FROM metahtml
-    GROUP BY access_day, timestamp_published
-);
-
--- EXEC SQL ENDIF;
 
 /* indexes for text search of the form
 
@@ -974,33 +672,8 @@ WHERE
     spacy_tsquery('en', 'covid');
 */
 
-CREATE INDEX metahtml_title_rumidx ON metahtml USING rum (title) TABLESPACE fastdata;
-CREATE INDEX metahtml_content_rumidx ON metahtml USING rum (content) TABLESPACE fastdata;
-/*
-CREATE INDEX metahtml_title_rumidx ON metahtml USING rum (
-    spacy_tsvector(
-        jsonb->'language'->'best'->>'value',
-        jsonb->'title'->'best'->>'value'
-    ));
-CREATE INDEX metahtml_content_rumidx ON metahtml USING rum (
-    spacy_tsvector(
-        jsonb->'language'->'best'->>'value',
-        jsonb->'content'->'best'->>'value'
-    ));
-
-CREATE INDEX metahtml_hosttitle_rumidx ON metahtml USING rum (
-    url_host_key(url),
-    spacy_tsvector(
-        jsonb->'language'->'best'->>'value',
-        jsonb->'title'->'best'->>'value'
-    ));
-CREATE INDEX metahtml_hostcontent_rumidx ON metahtml USING rum (
-    url_host_key(url),
-    spacy_tsvector(
-        jsonb->'language'->'best'->>'value',
-        jsonb->'content'->'best'->>'value'
-    ));
-*/
+CREATE INDEX metahtml_title_rumidx ON metahtml USING rum (title) ;
+CREATE INDEX metahtml_content_rumidx ON metahtml USING rum (content) ;
 
 COMMIT;
 

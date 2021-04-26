@@ -186,6 +186,3 @@ if __name__ == '__main__':
 
     if args.warc:
         process_warc_from_url(connection,args.warc)
-
-    if args.cc_url:
-        process_all_warcs_from_url(connection, args.cc_url)

@@ -12,16 +12,16 @@ import os
 import re
 import sqlalchemy
 import traceback
-
 import pspacy
 
 # initialize logging
 import logging
 log = logging.getLogger(__name__)
 
+
 def process_cdx_url(connection, url, batch_size=100, source='cc', **kwargs):
     '''
-    FIXME:
+    NOTE:
     ideally, this function would be wrapped in a transaction;
     but this causes deadlocks when it is run concurrently with other instances of itself
     '''
@@ -59,52 +59,33 @@ def process_cdx_url(connection, url, batch_size=100, source='cc', **kwargs):
     log.info("estimated_urls="+str(estimated_urls))
 
     # loop through each matching url
+    # and add it to the batch
     batch = []
     for i,result in enumerate(cdx.iter(url,**kwargs)):
 
         # process only urls with 200 status code (i.e. successful)
         if result['status']=='200':
             log.info('fetching result; progress='+str(i)+'/'+str(estimated_urls)+'={:10.4f}'.format(i/estimated_urls)+' url='+result['url'])
-            record = result.fetch_warc_record()
 
-            # extract the information from the warc record
-            url = record.rec_headers.get_header('WARC-Target-URI')
-            accessed_at = record.rec_headers.get_header('WARC-Date')
-            html = record.content_stream().read()
+            # FIXME: extract a warc record from the result variable
+
+            # FIXME: extract the information from the warc record
+            url = None
+            accessed_at = None
+            html = None
             log.debug("url="+url)
 
-            # extract the meta
-            try:
-                meta = metahtml.parse(html, url)
-
-                try:
-                    pspacy_title = pspacy.lemmatize(meta['language']['best']['value'], meta['title']['best']['value'])
-                    pspacy_content = pspacy.lemmatize(meta['language']['best']['value'], meta['title']['best']['value'])
-                except TypeError:
-                    pspacy_title = None
-                    pspacy_content = None
-
-            # if there was an error in metahtml, log it
-            except Exception as e:
-                log.warning('url='+url+'type='+type(e).__name__+' exception='+str(e))
-                meta = { 
-                    'exception' : {
-                        'str(e)' : str(e),
-                        'type' : type(e).__name__,
-                        'location' : 'metahtml',
-                        'traceback' : traceback.format_exc()
-                        }
-                    }
-                pspacy_title = None
-                pspacy_content = None
+            # FIXME: extract the metainfo using the metahtml library
+            meta = None
+            pspacy_title = None
+            pspacy_content = None
 
             # append to the batch
-            meta_json = json.dumps(meta, default=str)
             batch.append({
                 'accessed_at' : accessed_at,
                 'id_source' : id_source,
                 'url' : url,
-                'jsonb' : meta_json,
+                'jsonb' : json.dumps(meta, default=str),
                 'pspacy_title' : pspacy_title,
                 'pspacy_content' : pspacy_content
                 })
@@ -162,7 +143,7 @@ if __name__=='__main__':
         })  
     connection = engine.connect()
 
-    # FIXME: ensure that the url_pattern will not overload the server
+    # NOTE: ensure that the url_pattern will not overload the server
     if not re.match(r'.+\..+/', args.url_pattern):
         print('args.url_pattern must contain at least a full hostname in order to not overload the cdx servers')
         sys.exit(1)
