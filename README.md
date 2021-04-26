@@ -12,9 +12,14 @@ In this assignment you will create a highly scalable web search engine.
 
 ## Task 0: project setup
 
-1. Fork this github repo
+1. Fork this github repo, and clone your fork onto the lambda server
 
-1. Clone your fork onto the lambda server
+1. Ensure that you'll have enough free disk space by:
+    1. bring down any running docker containers
+    1. run the command
+       ```
+       $ docker volume prune
+       ```
 
 ## Task 1: getting the system running
 
