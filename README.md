@@ -72,7 +72,7 @@ Next follow these steps:
    In order to get a valid HTTP url, you'll need to prepend `https://commoncrawl.s3.amazonaws.com/` to the front of the path.
 1. Then, run the command
    ```
-   $ ./download_warc.sh $URL
+   $ ./downloader_warc.sh $URL
    ```
    where `$URL` is the url to your selected WARC file.
 1. Run the command
@@ -85,7 +85,7 @@ Next follow these steps:
 
 You can verify that your system is working with the following tasks.
 (Note that they are listed in order of how soon you will start seeing results for them.)
-1. Running `docker logs` on your `download_warc` containers.
+1. Running `docker logs` on your `downloader_warc` containers.
 1. Run the query
    ```
    SELECT count(*) FROM metahtml;
@@ -95,9 +95,9 @@ You can verify that your system is working with the following tasks.
 
 ### Task 2b
 
-The `download_warc` service above downloads many urls quickly, but they are mostly low-quality urls.
+The `downloader_warc` service above downloads many urls quickly, but they are mostly low-quality urls.
 For example, most URLs do not include the date they were published, and so their contents will not be reflected in the ngrams graph.
-In this task, you will implement and run the `download_host` service for downloading high quality urls.
+In this task, you will implement and run the `downloader_host` service for downloading high quality urls.
 
 1. The file `services/downloader_host/downloader_host.py` has 3 `FIXME` statements.
    You will have to complete the code in these statements to make the python script correctly insert WARC records into the database.
@@ -105,7 +105,7 @@ In this task, you will implement and run the `download_host` service for downloa
    HINT:
    The code will require that you use functions from the cdx_toolkit library.
    You can find the documentation [here](https://pypi.org/project/cdx-toolkit/).
-   You can also reference the `download_warc` service for hints,
+   You can also reference the `downloader_warc` service for hints,
    since this service accomplishes a similar task.
 
 1. Run the query
@@ -116,7 +116,7 @@ In this task, you will implement and run the `download_host` service for downloa
    Note that the command above lists the hosts in key syntax form, and you'll have to convert the host into standard form.
 1. Select 5 hostnames from the list above, then run the command
    ```
-   $ ./downloader_host.sh "$HOST/*"
+   $ ./downloader_host.sh "$HOST"
    ```
    to insert the urls from these 5 hostnames.
 
